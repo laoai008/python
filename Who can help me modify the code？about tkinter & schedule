@@ -1,0 +1,91 @@
+from tkinter import *
+import requests
+from bs4 import BeautifulSoup
+import time
+import schedule
+import winsound
+import datetime
+import string
+#import threading
+class Gui(object):
+    def __init__(self):
+        # 创建主窗口
+        self.root = Tk()
+        self.root.geometry('400x200')
+        self.frame_boss = Frame(self.root)
+        self.frame_boss.pack()
+        self.frame = Frame(self.frame_boss)
+        self.frame.grid()
+        # 设置标题
+        self.root.title("监控器")
+        # 创建两个文本框
+        self.label = Label(self.frame , text='监控下限', height=1)
+        self.label2 = Label(self.frame, text='监控上限', height=1)
+        # 创建两个输入框，分别输入用户账号密码两个数值
+        self.var_input = Entry(self.frame, width=7)
+        self.var_input2 = Entry(self.frame, width=7)
+        # 创建一个显示框
+        self.display_info = Listbox(self.root, height=90, width=60)
+        # 创建两个数字确定按钮
+        self.var_button = Button(self.frame, command=self.writ, text="确定", height=0)
+        self.var_button2 = Button(self.frame, command=self.writ2, text="确定", height=0)
+        # 创建一个监控按钮
+        self.run_button = Button(self.frame_boss, command=self.spider, text="开始监控", height=2)
+
+        self.label.grid(row=0, column=0)
+        self.label2.grid(row=1, column=0)
+        # 输入值
+        self.var_input.grid(row=0, column=1)
+        self.var_input2.grid(row=1, column=1)
+        # 输入值确定键
+        self.var_button.grid(row=0, column=4, sticky=N)
+        self.var_button2.grid(row=1, column=4, sticky=N)
+        # 显示
+        self.display_info.pack()
+        # 运行
+        self.run_button.grid(row=0, column=5)
+        self.var_input.focus()
+        self.var_input2.focus()
+    #获取输入数值
+    def writ(self):
+        try:
+            self.var = float(self.var_input.get())
+        except:
+            self.var_input.delete(0, END)
+    def writ2(self):
+        try:
+            self.var2 = float(self.var_input2.get())
+        except:
+            self.var_input2.delete(0, END)
+    def spider(self):
+        ticks = float(time.time())  # 时间戳转浮点
+        t = str('%.3f' % ticks)  # 截取时间戳前14位
+        t1 = t.translate(str.maketrans('', '', string.punctuation))  # 转换成字符串，去掉标点符号
+        self.headers = {
+            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.79 Safari/537.36'}
+        self.url = 'http://push2.eastmoney.com/api/qt/stock/details/get?ut=fa5fd1943c7b386f172d6893dbfba10b&fields1=f1,f2,f3,f4&fields2=f51,f52,f53,f54,f55&pos=-11&secid=1.600487&cb=jQuery112402954574716184135_1586693661245&_=1586693661341'
+
+        self.pram = requests.get(self.url, headers=self.headers)
+        self._pram_bs4 = (BeautifulSoup(self.pram.text, 'html.parser')).text  # 或者str()都可以
+        self._pram_now = float(self._pram_bs4[174:179])
+        while self._pram_now < self.var or self._pram_now > self.var2:
+            winsound.Beep(1276, 5225)
+            if self.var <= self._pram_now <= self.var2:
+                break
+            # 清空输入框
+        self.display_info.delete(0, END)
+        nowdate = datetime.datetime.now().strftime('%Y-%m-%d')
+        nowtime = datetime.datetime.now().strftime('%H:%M:%S')
+        MESSAGE = ['实时价格(¥):', str('%.2f' % self._pram_now), '时间:', nowdate, nowtime]
+        for i in MESSAGE:
+            self.display_info.insert(END, i)
+        return MESSAGE
+        self.after(100, self.spider)
+job=Gui()
+mainloop()
+schedule.every(5).seconds.do(job.spider)
+while True:
+    schedule.run_pending()
+    time.sleep(1)
+
+
